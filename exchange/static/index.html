@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Simple Crypto Exchange GUI</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .orders { display: flex; gap: 40px; }
+        table { border-collapse: collapse; width: 300px; }
+        th, td { border: 1px solid #ccc; padding: 4px; text-align: right; }
+    </style>
+</head>
+<body>
+<h1>Simple Crypto Exchange GUI</h1>
+<label for="pair">Trading Pair:</label>
+<select id="pair"></select>
+<br><br>
+<label>Side:
+    <select id="side">
+        <option value="buy">Buy</option>
+        <option value="sell">Sell</option>
+    </select>
+</label>
+<label>Price: <input id="price" type="number" step="0.01"></label>
+<label>Amount: <input id="amount" type="number" step="0.0001"></label>
+<button onclick="placeOrder()">Place Order</button>
+
+<h2>Order Book</h2>
+<div class="orders">
+    <div>
+        <h3>Bids</h3>
+        <table id="bids"><tr><th>User</th><th>Price</th><th>Amount</th></tr></table>
+    </div>
+    <div>
+        <h3>Asks</h3>
+        <table id="asks"><tr><th>User</th><th>Price</th><th>Amount</th></tr></table>
+    </div>
+</div>
+
+<script>
+async function loadPairs() {
+    const res = await fetch('/pairs');
+    const pairs = await res.json();
+    const select = document.getElementById('pair');
+    pairs.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p; opt.textContent = p; select.appendChild(opt);
+    });
+    loadOrderbook();
+}
+
+async function loadOrderbook() {
+    const pair = document.getElementById('pair').value;
+    const res = await fetch(`/orderbook/${pair}`);
+    const book = await res.json();
+    populateTable('bids', book.bids);
+    populateTable('asks', book.asks);
+}
+
+function populateTable(id, orders) {
+    const table = document.getElementById(id);
+    table.innerHTML = '<tr><th>User</th><th>Price</th><th>Amount</th></tr>';
+    orders.forEach(o => {
+        const row = table.insertRow();
+        row.insertCell().textContent = o.user;
+        row.insertCell().textContent = o.price;
+        row.insertCell().textContent = o.amount;
+    });
+}
+
+async function placeOrder() {
+    const order = {
+        user: 'alice',
+        pair: document.getElementById('pair').value,
+        side: document.getElementById('side').value,
+        price: parseFloat(document.getElementById('price').value),
+        amount: parseFloat(document.getElementById('amount').value)
+    };
+    await fetch('/order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(order)
+    });
+    document.getElementById('price').value = '';
+    document.getElementById('amount').value = '';
+    loadOrderbook();
+}
+
+document.getElementById('pair').addEventListener('change', loadOrderbook);
+loadPairs();
+</script>
+</body>
+</html>
